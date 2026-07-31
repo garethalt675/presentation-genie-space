@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metric Views in Genie Spaces — Techcombank Data &amp; Analytics</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    /* Techcombank — champagne & gold identity */
+    --ground:#F6EFE1;
+    --ground-2:#FBF7EF;
+    --surface:#FFFFFF;
+    --line:#E3D6BE;
+    --line-soft:#EFE6D5;
+    --ink:#1A1614;
+    --ink-2:#5C534A;
+    --ink-3:#93877A;
+
+    --red:#E4002B;          /* TCB red — Method B / primary accent */
+    --red-soft:rgba(228,0,43,.07);
+    --red-line:rgba(228,0,43,.28);
+    --gold:#A67C3D;         /* Method A / secondary */
+    --gold-soft:rgba(166,124,61,.09);
+    --gold-line:rgba(166,124,61,.28);
+    --green:#3F7A5E;
+    --green-soft:rgba(63,122,94,.09);
+
+    --code-bg:#221B17;
+    --code-fg:#EDE3D5;
+
+    --mono:"IBM Plex Mono","JetBrains Mono","Cascadia Code",Consolas,"Liberation Mono",monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(900px 520px at 8% -8%, #FDF9F1 0%, transparent 62%),
+      radial-gradient(760px 460px at 104% 108%, #F0E4CE 0%, transparent 58%),
+      #EFE7D8;
+    color:var(--ink);
+    font-family:var(--sans);
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  /* ---------- stage ---------- */
+  #viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  #stage{
+    width:1280px;height:720px;position:relative;
+    transform-origin:center center;
+    background:linear-gradient(158deg,#FDFAF4 0%,var(--ground) 58%,#F1E8D6 100%);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:0 32px 90px rgba(90,68,38,.22), 0 2px 0 rgba(255,255,255,.7) inset;
+    overflow:hidden;
+  }
+  /* gold hairline signature down the left edge */
+  #stage::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:linear-gradient(180deg,var(--red) 0%,var(--red) 22%,var(--gold) 22%,var(--gold) 46%,transparent 46%);
+    opacity:.9;
+  }
+
+  .slide{
+    position:absolute;inset:0;
+    padding:48px 60px 70px;
+    display:none;flex-direction:column;
+    animation:in .3s cubic-bezier(.2,.7,.3,1);
+  }
+  .slide.active{display:flex}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* dark closing band */
+  .slide.dark{background:linear-gradient(155deg,#241E19 0%,#1A1614 60%,#211A15 100%);color:var(--ground)}
+  .slide.dark h2,.slide.dark h1,.slide.dark h3{color:var(--ground-2)}
+  .slide.dark p,.slide.dark li{color:#C5B8A6}
+  .slide.dark .card{background:rgba(255,255,255,.045);border-color:rgba(230,214,190,.18)}
+  .slide.dark .card p{color:#C5B8A6}
+  .slide.dark strong{color:#FFF}
+  .slide.dark code{background:rgba(255,255,255,.08);border-color:rgba(230,214,190,.2);color:#F0C9A0}
+  .slide.dark .kicker{color:#F5A0AF}
+  .slide.dark .num{background:rgba(228,0,43,.24);color:#F5A0AF;border-color:rgba(245,160,175,.45)}
+  .slide.dark .num.a{background:rgba(166,124,61,.26);color:#DFBC7C;border-color:rgba(223,188,124,.45)}
+
+  /* ---------- typography ---------- */
+  .kicker{
+    font-family:var(--mono);
+    font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--red);font-weight:600;margin-bottom:11px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .kicker::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,var(--gold-line),transparent)}
+  h1{font-size:54px;line-height:1.06;letter-spacing:-.028em;font-weight:800;color:var(--ink)}
+  h2{font-size:33px;line-height:1.16;letter-spacing:-.022em;font-weight:750;margin-bottom:18px;color:var(--ink)}
+  h3{font-size:15.5px;font-weight:700;letter-spacing:-.01em;margin-bottom:7px;color:var(--ink)}
+  p{font-size:17.5px;line-height:1.52;color:var(--ink-2)}
+  .lead{font-size:20px;line-height:1.5;color:var(--ink-2);max-width:54ch}
+  strong{color:var(--ink);font-weight:650}
+  .muted{color:var(--ink-3)}
+  .red{color:var(--red)}
+  .gld{color:var(--gold)}
+
+  ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+  li{font-size:16.5px;line-height:1.45;color:var(--ink-2);padding-left:21px;position:relative}
+  li::before{content:"";position:absolute;left:1px;top:8px;width:6px;height:6px;border-radius:1px;
+             background:var(--red);transform:rotate(45deg)}
+  ul.a li::before{background:var(--gold)}
+  ul.ok li::before{background:var(--green)}
+  ul.no li::before{background:#B5B0A8}
+
+  /* ---------- primitives ---------- */
+  .card{
+    background:var(--surface);border:1px solid var(--line-soft);border-radius:11px;
+    padding:16px 18px;box-shadow:0 1px 2px rgba(90,68,38,.05);
+  }
+  .card p{font-size:14.5px;line-height:1.45}
+  .card.b{border-color:var(--red-line);background:linear-gradient(180deg,var(--red-soft),transparent 80%),var(--surface)}
+  .card.a{border-color:var(--gold-line);background:linear-gradient(180deg,var(--gold-soft),transparent 80%),var(--surface)}
+  .card.g{border-color:rgba(63,122,94,.3);background:linear-gradient(180deg,var(--green-soft),transparent 80%),var(--surface)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+  .split{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;flex:1;min-height:0}
+  .stack{display:flex;flex-direction:column;gap:13px}
+  .fill{flex:1;min-height:0;display:flex;flex-direction:column;gap:15px}
+  .fill > .callout:last-child{margin-top:auto}
+  .split > .stack > .callout:last-child{margin-top:auto}
+  .tblwrap{flex:1;min-height:0;display:flex}
+  .tblwrap table{height:100%}
+  .tblwrap td,.tblwrap th{vertical-align:middle}
+
+  /* method label chips — used consistently across the deck */
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;
+    padding:4px 10px;border-radius:4px;
+  }
+  .chip.a{color:var(--gold);background:var(--gold-soft);border:1px solid var(--gold-line)}
+  .chip.b{color:var(--red);background:var(--red-soft);border:1px solid var(--red-line)}
+  .chip.n{color:var(--ink-3);background:rgba(0,0,0,.03);border:1px solid var(--line-soft)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+
+  .num{
+    font-family:var(--mono);font-size:11.5px;font-weight:700;
+    width:23px;height:23px;border-radius:5px;flex:none;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--red-soft);color:var(--red);border:1px solid var(--red-line);
+  }
+  .num.a{background:var(--gold-soft);color:var(--gold);border-color:var(--gold-line)}
+  .step{display:flex;gap:11px;align-items:flex-start}
+  .step .num{margin-top:1px}
+  .step div{flex:1}
+
+  /* ---------- code ---------- */
+  pre{
+    font-family:var(--mono);font-size:13px;line-height:1.55;
+    background:var(--code-bg);border:1px solid #3A2F27;border-radius:9px;
+    padding:15px 17px;overflow:auto;color:var(--code-fg);
+    white-space:pre;tab-size:2;
+  }
+  pre.sm{font-size:11.4px;line-height:1.5;padding:13px 15px}
+  pre.xs{font-size:10.3px;line-height:1.42;padding:11px 13px}
+  pre.tighter{line-height:1.3;padding:11px 13px;font-size:10.5px}
+  .codehead{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-3);margin-bottom:6px;display:flex;justify-content:space-between;gap:10px;
+  }
+  code{font-family:var(--mono);font-size:.9em;background:rgba(166,124,61,.1);
+       border:1px solid rgba(166,124,61,.22);border-radius:4px;padding:1px 5px;color:#8A5A2B}
+  .k{color:#9DC9E8}
+  .s{color:#E0B96B}
+  .c{color:#8A7A68;font-style:italic}
+  .n{color:#C3A6E0}
+  .b{color:#C3A6E0}
+  .f{color:#86C7B0}
+  .kw{color:#FF8A93}
+
+  /* ---------- tables ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+  th{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)}
+  td:first-child{color:var(--ink);font-weight:600;width:23%}
+  tbody tr:last-child td{border-bottom:none}
+  th.ca,td.ca{background:var(--gold-soft)}
+  th.cb,td.cb{background:var(--red-soft)}
+  th.ca{color:var(--gold)}
+  th.cb{color:var(--red)}
+  td.ca{color:var(--ink-2)}
+  td.cb{color:var(--ink)}
+  table.tight{font-size:13.2px}
+  table.tight th,table.tight td{padding:6.5px 10px}
+  table.tight td:first-child{width:22%}
+
+  /* ---------- flow / pipeline ---------- */
+  .flow{display:flex;align-items:stretch;width:100%}
+  .fnode{flex:1;background:var(--surface);border:1px solid var(--line-soft);border-radius:10px;padding:14px 15px}
+  .fnode .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px}
+  .fnode .ttl{font-size:15px;font-weight:700;margin-bottom:4px;color:var(--ink)}
+  .fnode p{font-size:12.5px;line-height:1.38}
+  .fnode.hot{border-color:var(--red-line);background:linear-gradient(180deg,var(--red-soft),transparent 85%),var(--surface)}
+  .fnode.hot .ttl{color:var(--red)}
+  .farrow{width:30px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:16px}
+
+  /* pyramid */
+  .pyr{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .pyr div{border-radius:8px;padding:11px 16px;text-align:center;font-size:14.5px;border:1px solid}
+  .pyr .p1{width:62%;background:var(--red-soft);border-color:var(--red-line);color:var(--ink)}
+  .pyr .p2{width:80%;background:var(--gold-soft);border-color:var(--gold-line);color:var(--ink-2)}
+  .pyr .p3{width:96%;background:rgba(0,0,0,.035);border-color:var(--line);color:var(--ink-3)}
+
+  .callout{
+    border-left:3px solid var(--red);background:var(--red-soft);
+    padding:11px 15px;border-radius:0 8px 8px 0;font-size:15px;line-height:1.45;color:var(--ink);
+  }
+  .callout b{color:var(--red)}
+  .callout.a{border-left-color:var(--gold);background:var(--gold-soft)}
+  .callout.a b{color:var(--gold)}
+  .callout.g{border-left-color:var(--green);background:var(--green-soft)}
+  .callout.g b{color:var(--green)}
+
+  .stat{text-align:center;padding:13px 10px}
+  .stat .big{font-size:34px;font-weight:800;letter-spacing:-.03em;font-family:var(--mono)}
+  .stat .cap{font-size:12px;color:var(--ink-3);margin-top:3px;line-height:1.35}
+
+  /* ---------- chrome ---------- */
+  .foot{
+    position:absolute;left:60px;right:60px;bottom:20px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-family:var(--mono);font-size:10.5px;color:var(--ink-3);letter-spacing:.1em;text-transform:uppercase;
+  }
+  .slide.dark ~ .foot{color:#8A7C6C}
+  #bar{position:absolute;left:0;bottom:0;height:3px;
+       background:linear-gradient(90deg,var(--red),#F2685F 60%,var(--gold));
+       width:0;transition:width .3s cubic-bezier(.2,.7,.3,1)}
+
+  #notes{
+    position:fixed;left:50%;bottom:12px;transform:translateX(-50%);
+    width:min(920px,92vw);max-height:26vh;overflow:auto;
+    background:rgba(26,22,20,.96);border:1px solid #3A2F27;border-radius:10px;
+    padding:13px 17px;font-size:13.5px;line-height:1.5;color:#D8CCBB;
+    backdrop-filter:blur(6px);display:none;z-index:20;
+  }
+  #notes.on{display:block}
+  #notes b{color:#F5A0AF;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+           display:block;margin-bottom:5px}
+  .notes{display:none}
+
+  #help{position:fixed;right:14px;top:12px;font-family:var(--mono);font-size:10.5px;color:var(--ink-3);z-index:20}
+  #help kbd{background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--ink-2);font-size:10px}
+
+  .title-slide{justify-content:center}
+  .brandmark{display:flex;align-items:center;gap:13px;margin-bottom:26px}
+  .brandmark .sq{width:38px;height:38px;border-radius:9px;background:var(--red);
+                 display:flex;align-items:center;justify-content:center;
+                 font-family:var(--mono);font-weight:800;font-size:18px;color:#fff}
+  .brandmark .nm{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);line-height:1.5}
+  .rule{height:1px;background:linear-gradient(90deg,var(--gold-line),transparent);margin:20px 0}
+
+  @media print{
+    body,#viewport{display:block;overflow:visible;background:#fff}
+    #stage{transform:none!important;width:1280px;height:720px;page-break-after:always;border-radius:0;box-shadow:none;margin:0 auto}
+    .slide{display:flex!important;position:relative;page-break-after:always}
+    #help,#notes{display:none!important}
+  }
+</style>
+</head>
+<body>
+
+<div id="help"><kbd>←</kbd> <kbd>→</kbd> navigate &nbsp; <kbd>S</kbd> notes &nbsp; <kbd>F</kbd> fullscreen</div>
+
+<div id="viewport">
+<div id="stage">
+
+<!-- ═══════ 1 · TITLE ═══════ -->
+<section class="slide active" data-title="Title">
+  <div class="title-slide">
+    <div class="brandmark">
+      <div class="sq">T</div>
+      <div class="nm">Techcombank<br><span class="muted">Data &amp; Analytics</span></div>
+    </div>
+    <div class="kicker" style="max-width:440px">Genie Enablement Session</div>
+    <h1>Powering a Genie Space:<br><span class="red">Metric Views</span> vs. <span class="gld">Views &amp; Tables</span></h1>
+    <div class="rule" style="max-width:600px"></div>
+    <p class="lead">Two ways to give Genie the business meaning behind our data —
+      what each one actually does, which questions each gets right, and how to choose.</p>
+    <div class="chips" style="margin-top:26px">
+      <span class="chip a">Method A · Tables &amp; Views</span>
+      <span class="chip b">Method B · Metric Views</span>
+      <span class="chip n">Compare &amp; Contrast</span>
+      <span class="chip n">~45 min</span>
+    </div>
+  </div>
+  <aside class="notes">Frame the session as a decision, not a product tour. Everyone in the room either owns a Genie space or is about to. The question they came with is "why are my Genie answers inconsistent" — both methods are answers to that, with different costs.</aside>
+</section>
+
+<!-- ═══════ 2 · THE PROBLEM ═══════ -->
+<section class="slide" data-title="Why Genie answers drift">
+  <div class="kicker">The problem</div>
+  <h2>Same question, three sessions, three numbers</h2>
+  <div class="fill">
+    <div class="grid3">
+      <div class="card stat"><div class="big gld">₫4.2bn</div><div class="cap">"Average order value by segment"<br><span class="muted">Genie used <code>AVG(total_price)</code></span></div></div>
+      <div class="card stat"><div class="big gld">₫4.7bn</div><div class="cap">"AOV per customer segment"<br><span class="muted">joined a dimension that fanned out</span></div></div>
+      <div class="card stat"><div class="big gld">₫3.9bn</div><div class="cap">"What's our AOV this quarter?"<br><span class="muted">calendar quarter, not fiscal</span></div></div>
+    </div>
+    <div class="split" style="gap:24px">
+      <div class="stack">
+        <h3 style="font-size:17px">Genie did nothing wrong</h3>
+        <ul>
+          <li>It wrote <strong>valid SQL</strong> against exactly what we gave it.</li>
+          <li>Nobody had told it that AOV means <em>revenue ÷ distinct orders</em>, not the average of a column.</li>
+          <li>Nobody had told it which join is safe, or that our quarter starts in October.</li>
+          <li>Every rephrasing is a fresh chance to guess differently.</li>
+        </ul>
+      </div>
+      <div class="stack">
+        <div class="callout"><b>The real question:</b> where should business meaning live — in <em>instructions we write to Genie</em>, or in <em>the data model itself</em>?</div>
+        <div class="card">
+          <h3>That's the whole session</h3>
+          <p>Method A puts meaning in the space. Method B puts meaning in Unity Catalog. Both work. They fail differently.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Substitute a real TCB example if you have one — a metric two teams report differently. The point to land: this is not a Genie defect, it is a semantics gap, and semantics is our job not the model's.</aside>
+</section>
+
+<!-- ═══════ 3 · HOW GENIE WORKS ═══════ -->
+<section class="slide" data-title="How Genie answers">
+  <div class="kicker">Foundation</div>
+  <h2>What Genie actually does with your question</h2>
+  <div class="fill">
+    <div class="flow">
+      <div class="fnode"><div class="lbl">01</div><div class="ttl">You ask</div><p>Natural language, in the chat panel. No SQL.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode hot"><div class="lbl">02</div><div class="ttl">Genie reads context</div><p>Asset names, column comments, synonyms, instructions, example SQL — <strong>and metric view fields &amp; measures</strong>.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><div class="lbl">03</div><div class="ttl">Genie writes SQL</div><p>It picks the tables, the joins, the filters and the aggregation.</p></div>
+      <div class="farrow">→</div>
+      <div class="fnode"><div class="lbl">04</div><div class="ttl">Runs &amp; shows</div><p>Executes under <em>your</em> Unity Catalog permissions and returns the SQL alongside the answer.</p></div>
+    </div>
+    <div class="grid2" style="flex:1">
+      <div class="card b">
+        <h3>Step 2 is the only step we control</h3>
+        <p>We cannot change how the model reasons. We can only change <strong>what it is allowed to read</strong>. Every technique in this session — comments, synonyms, example SQL, metric views — is a way of loading step 2.</p>
+      </div>
+      <div class="stack">
+        <div class="card">
+          <h3>Genie is a SQL writer, not a calculator</h3>
+          <p>If the definition of a metric isn't discoverable, Genie infers one. It will be plausible, confidently presented, and sometimes wrong.</p>
+        </div>
+        <div class="card g">
+          <h3>Good news: it shows its working</h3>
+          <p>The generated SQL is always visible. Reviewing it is how we audit — and how we spot which method is being used.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Encourage the habit of expanding the SQL on every answer during rollout. That is how the team builds intuition for what Genie can and can't infer, and it is the fastest way to find missing metadata.</aside>
+</section>
+
+<!-- ═══════ 4 · THE TWO METHODS ═══════ -->
+<section class="slide" data-title="The two methods">
+  <div class="kicker">The choice</div>
+  <h2>Two ways to hand Genie our semantics</h2>
+  <div class="split" style="grid-template-columns:1fr 1fr;gap:22px">
+    <div class="card a" style="display:flex;flex-direction:column;gap:12px">
+      <div><span class="chip a">Method A</span></div>
+      <h3 style="font-size:21px;margin:0">Tables &amp; views, curated in the space</h3>
+      <p style="font-size:15px">Point Genie at the gold tables or SQL views, then <em>teach the space</em>: column comments, agent synonyms, text instructions, and example SQL queries.</p>
+      <div style="border-top:1px solid var(--gold-line);padding-top:12px">
+        <p style="font-size:13.5px"><strong>Meaning lives in:</strong> the Genie space configuration.</p>
+        <p style="font-size:13.5px;margin-top:6px"><strong>Owned by:</strong> whoever curates that space.</p>
+        <p style="font-size:13.5px;margin-top:6px"><strong>Scope:</strong> one space at a time.</p>
+      </div>
+    </div>
+    <div class="card b" style="display:flex;flex-direction:column;gap:12px">
+      <div><span class="chip b">Method B</span></div>
+      <h3 style="font-size:21px;margin:0">A metric view as the semantic layer</h3>
+      <p style="font-size:15px">Model the business logic once in Unity Catalog — measures, fields, joins, synonyms — then point Genie at that single object.</p>
+      <div style="border-top:1px solid var(--red-line);padding-top:12px">
+        <p style="font-size:13.5px"><strong>Meaning lives in:</strong> Unity Catalog, as versioned YAML.</p>
+        <p style="font-size:13.5px;margin-top:6px"><strong>Owned by:</strong> the data team, via pull request.</p>
+        <p style="font-size:13.5px;margin-top:6px"><strong>Scope:</strong> every space, dashboard and query at once.</p>
+      </div>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:16px"><b>Not either/or.</b> Most mature spaces run both — we'll come back to the hybrid pattern at the end. But you should know which one is carrying the weight.</div>
+  <aside class="notes">Resist the temptation to declare a winner here. People need to see the mechanics of both before the comparison table lands. Say explicitly: "if you already have a working space on Method A, nobody is asking you to tear it down today."</aside>
+</section>
+
+<!-- ═══════ 5 · METHOD A ═══════ -->
+<section class="slide" data-title="Method A — tables & views">
+  <div class="kicker"><span class="gld">Method A</span> · Tables &amp; views</div>
+  <h2>What you configure in the space</h2>
+  <div class="split">
+    <div class="stack">
+      <div class="step"><span class="num a">1</span><div><h3>Pick the assets</h3>
+        <p style="font-size:14.5px">Add the gold tables or views. A space supports up to <strong>30 tables</strong> — but the guidance is <strong>five or fewer</strong>. Every extra asset is another way to pick wrong.</p></div></div>
+      <div class="step"><span class="num a">2</span><div><h3>Document the columns</h3>
+        <p style="font-size:14.5px">Clear names and comments in Unity Catalog. Add <strong>agent-scoped synonyms</strong> and custom descriptions so Genie maps "doanh thu", "revenue" and "sales" to the same column.</p></div></div>
+      <div class="step"><span class="num a">3</span><div><h3>Add SQL expressions</h3>
+        <p style="font-size:14.5px">Define metrics and filters as SQL snippets. This is the <em>strongest</em> lever available in Method A.</p></div></div>
+      <div class="step"><span class="num a">4</span><div><h3>Add example SQL queries</h3>
+        <p style="font-size:14.5px">Show Genie how to answer the complex, multi-step or ambiguous questions. These double as trusted, reviewable assets.</p></div></div>
+      <div class="step"><span class="num a">5</span><div><h3>Write text instructions — last</h3>
+        <p style="font-size:14.5px">Plain-English rules. Databricks is explicit: use these <strong>only as a last resort</strong>.</p></div></div>
+    </div>
+    <div class="stack">
+      <div>
+        <div class="codehead"><span>example SQL you'd register</span><span>SQL</span></div>
+        <pre class="sm" data-lang="sql">-- Q: "average order value by segment"
+SELECT
+  c.c_mktsegment AS segment,
+  SUM(o.o_totalprice)
+    / COUNT(DISTINCT o.o_orderkey) AS aov
+FROM gold.fct_orders o
+JOIN gold.dim_customer c
+  ON o.o_custkey = c.c_custkey
+WHERE o.o_status &lt;&gt; 'CANCELLED'
+GROUP BY 1;</pre>
+      </div>
+      <div class="callout a"><b>Notice what this is:</b> the correct definition of AOV, written out — but bound to <em>one phrasing of one question</em>. Ask it by month instead and Genie is improvising again.</div>
+    </div>
+  </div>
+  <aside class="notes">Step 5 is the one teams over-invest in because it feels fastest. Text instructions are the most fragile lever — they compete with each other, they're unversioned, and they scale badly past a dozen. Say this plainly.</aside>
+</section>
+
+<!-- ═══════ 6 · METHOD B ═══════ -->
+<section class="slide" data-title="Method B — metric view">
+  <div class="kicker"><span class="red">Method B</span> · Metric views</div>
+  <h2>What a metric view hands Genie</h2>
+  <div class="split">
+    <div>
+      <div class="codehead"><span>one Unity Catalog object</span><span>SQL + YAML</span></div>
+      <pre class="xs tighter" data-lang="sql">CREATE OR REPLACE VIEW tcb.gold.mv_sales
+WITH METRICS LANGUAGE YAML AS $$
+version: 1.1
+source: SELECT * FROM tcb.gold.fct_orders
+filter: o_status &lt;&gt; 'CANCELLED'
+comment: Order performance. Grain: one row per order.
+joins:
+  - name: customer
+    source: tcb.gold.dim_customer
+    'on': o_custkey = c_custkey
+fields:
+  - name: market_segment
+    expr: customer.c_mktsegment
+    display_name: Market Segment
+    synonyms: [segment, industry, phan khuc]
+  - name: order_month
+    expr: "DATE_TRUNC('MONTH', o_orderdate)"
+    display_name: Order Month
+measures:
+  - name: total_revenue
+    expr: SUM(o_totalprice)
+    display_name: Total Revenue
+    synonyms: [revenue, sales, doanh thu]
+  - name: order_count
+    expr: COUNT(DISTINCT o_orderkey)
+  - name: avg_order_value
+    expr: MEASURE(total_revenue) / MEASURE(order_count)
+    display_name: Avg Order Value
+    synonyms: [AOV, average order value]
+$$;</pre>
+    </div>
+    <div class="stack">
+      <ul>
+        <li><strong>Measures have no fixed grain.</strong> AOV is defined once and stays correct by segment, by month, or overall.</li>
+        <li><strong>Fields are the safe grouping list.</strong> Genie doesn't have to guess which columns are dimensions.</li>
+        <li><strong>Joins are declared and constrained</strong> — Genie can't invent a fan-out.</li>
+        <li><strong>Synonyms are imported automatically.</strong> Up to <strong>10 per field or measure</strong>, which is where our Vietnamese business vocabulary goes.</li>
+        <li><strong>The filter is permanent.</strong> Cancelled orders can't come back, in any question, in any space.</li>
+      </ul>
+      <div class="callout"><b>One asset, whole star schema.</b> Orders + customer collapse into a single thing Genie has to choose — and it comes pre-labelled.</div>
+    </div>
+  </div>
+  <aside class="notes">Point at the synonyms lines specifically — bilingual vocabulary is a real TCB advantage here and it's cheap to add. Ten synonyms per field is generous; use them.</aside>
+</section>
+
+<!-- ═══════ 7 · COMPARISON ═══════ -->
+<section class="slide" data-title="Compare & contrast">
+  <div class="kicker">Compare &amp; contrast</div>
+  <h2>The two methods, side by side</h2>
+  <div class="fill">
+    <div class="tblwrap"><table class="tight">
+      <thead><tr><th></th><th class="ca">Method A · Tables &amp; views</th><th class="cb">Method B · Metric view</th></tr></thead>
+      <tbody>
+        <tr><td>What Genie sees</td><td class="ca">Raw columns plus whatever you documented</td><td class="cb">Named business measures and fields</td></tr>
+        <tr><td>Who defines the aggregation</td><td class="ca"><strong>Genie</strong>, freshly, per question</td><td class="cb"><strong>You</strong>, once, in YAML</td></tr>
+        <tr><td>Consistency across phrasings</td><td class="ca">Varies — each rewording can change the SQL</td><td class="cb">Same measure resolved every time</td></tr>
+        <tr><td>Ratios &amp; distinct counts</td><td class="ca">Often averaged-of-averages, silently</td><td class="cb">Composed with <code>MEASURE()</code>, correct at any grain</td></tr>
+        <tr><td>Joins</td><td class="ca">Inferred from comments and examples</td><td class="cb">Declared; fan-out controlled by the model</td></tr>
+        <tr><td>Asset budget (30 max, ≤5 advised)</td><td class="ca">Every table in the star counts</td><td class="cb">One view can replace the whole star</td></tr>
+        <tr><td>Where the effort goes</td><td class="ca">Instructions and example SQL, per space</td><td class="cb">Modelling once, in Unity Catalog</td></tr>
+        <tr><td>Reuse across spaces</td><td class="ca">Re-curate each new space</td><td class="cb">Every space inherits the same definitions</td></tr>
+        <tr><td>Row-level detail</td><td class="ca">Yes — full records available</td><td class="cb">No — aggregate answers only</td></tr>
+        <tr><td>Change control</td><td class="ca">Edited in the UI; hard to review</td><td class="cb">YAML in Git, reviewed in a pull request</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>The one-line version:</b> Method A teaches Genie the answer to a question. Method B teaches Genie the business.</div>
+  </div>
+  <aside class="notes">This is the slide people will photograph. Pause here. If you only have time for one slide in a follow-up, it's this one.</aside>
+</section>
+
+<!-- ═══════ 8 · WORKED EXAMPLE ═══════ -->
+<section class="slide" data-title="Same question, two paths">
+  <div class="kicker">Worked example</div>
+  <h2>“What was our average order value by segment?”</h2>
+  <div class="grid2" style="flex:1;min-height:0;gap:20px">
+    <div class="stack">
+      <div><span class="chip a">Method A</span> <span class="muted" style="font-size:13px">— Genie must infer five things</span></div>
+      <div>
+        <div class="codehead"><span>SQL Genie is likely to write</span><span>SQL</span></div>
+        <pre class="sm" data-lang="sql">SELECT
+  c.c_mktsegment,
+  AVG(o.o_totalprice) AS avg_order_value
+FROM gold.fct_orders o
+JOIN gold.dim_customer c
+  ON o.o_custkey = c.c_custkey
+GROUP BY 1;</pre>
+      </div>
+      <div class="card a">
+        <h3 style="color:var(--gold)">Three defects, none of them visible</h3>
+        <p><strong>1.</strong> <code>AVG(price)</code> ≠ revenue ÷ distinct orders.<br>
+           <strong>2.</strong> Cancelled orders were never excluded.<br>
+           <strong>3.</strong> If a customer has two rows, the join inflates the average.</p>
+      </div>
+    </div>
+    <div class="stack">
+      <div><span class="chip b">Method B</span> <span class="muted" style="font-size:13px">— nothing left to infer</span></div>
+      <div>
+        <div class="codehead"><span>SQL Genie writes</span><span>SQL</span></div>
+        <pre class="sm" data-lang="sql">SELECT
+  market_segment,
+  MEASURE(avg_order_value) AS aov
+FROM tcb.gold.mv_sales
+GROUP BY ALL;</pre>
+      </div>
+      <div class="card b">
+        <h3 style="color:var(--red)">Why it's right</h3>
+        <p>The ratio, the cancelled-order filter and the join safety are all <em>inside</em> <code>mv_sales</code>. Genie only had to choose a dimension and a measure — the two things it's genuinely good at.</p>
+      </div>
+      <div class="callout"><b>And ask it by month instead:</b> the same measure re-derives correctly. No new example query.</div>
+    </div>
+  </div>
+  <aside class="notes">The Method A SQL here is realistic, not a strawman — AVG of a price column is the single most common thing an LLM produces for "average order value". Show a real one from our own space if you have a screenshot.</aside>
+</section>
+
+<!-- ═══════ 9 · FAILURE MODES ═══════ -->
+<section class="slide" data-title="How each one fails">
+  <div class="kicker">Honest assessment</div>
+  <h2>How each method fails</h2>
+  <div class="grid2" style="flex:1;min-height:0;gap:20px">
+    <div class="card a" style="display:flex;flex-direction:column">
+      <div style="margin-bottom:11px"><span class="chip a">Method A fails when…</span></div>
+      <ul class="a">
+        <li>The question is phrased in a way your example queries don't cover.</li>
+        <li>A ratio gets rolled up — averages of averages pass silently.</li>
+        <li>The star schema grows and the space drifts past five assets.</li>
+        <li>Two instructions contradict each other and nobody notices which won.</li>
+        <li>A second space needs the same metric — and re-derives it slightly differently.</li>
+        <li>Someone edits the space config; there's no diff, no reviewer, no history.</li>
+      </ul>
+    </div>
+    <div class="card b" style="display:flex;flex-direction:column">
+      <div style="margin-bottom:11px"><span class="chip b">Method B fails when…</span></div>
+      <ul>
+        <li>Users want <strong>row-level detail</strong> — "show me order 12345". A metric view only aggregates.</li>
+        <li>The question needs a <strong>dimension nobody modelled</strong>. That's a YAML change, a PR, a deploy.</li>
+        <li>The relationship is <strong>fact-to-fact or many-to-many</strong> — must be pre-joined in a view first.</li>
+        <li>Someone tries to <strong>join it</strong> to another table or metric view. Not supported.</li>
+        <li>Exploration is genuinely open-ended and the questions aren't known yet.</li>
+        <li>The underlying gold table is wrong — a metric view gives bad data a trustworthy name.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout g" style="margin-top:15px"><b>Read the asymmetry:</b> Method A fails <em>quietly</em>, with a confident wrong number. Method B fails <em>loudly</em> — the question simply can't be answered until someone models it. For regulated reporting, loud is what we want.</div>
+  <aside class="notes">This slide buys credibility for the recommendation later. Do not skip it. The "fails quietly vs fails loudly" distinction is the strongest single argument in the deck for a bank.</aside>
+</section>
+
+<!-- ═══════ 10 · DECISION ═══════ -->
+<section class="slide" data-title="Which to use">
+  <div class="kicker">Decision</div>
+  <h2>Choosing per space</h2>
+  <div class="fill">
+    <div class="tblwrap"><table class="tight">
+      <thead><tr><th style="width:34%">If the space is for…</th><th class="cb">Start with</th><th>Because</th></tr></thead>
+      <tbody>
+        <tr><td>Governed KPIs — revenue, NIM, CASA ratio, AOV</td><td class="cb"><strong>Metric view</strong></td><td class="col-a">One definition, auditable, correct at every grain</td></tr>
+        <tr><td>An executive or regulatory audience</td><td class="cb"><strong>Metric view</strong></td><td class="col-a">Answers must be defensible and reproducible</td></tr>
+        <tr><td>The same metric across many spaces</td><td class="cb"><strong>Metric view</strong></td><td class="col-a">Define once; every space inherits it</td></tr>
+        <tr><td>Operational lookups &amp; record detail</td><td class="ca"><strong>Views &amp; tables</strong></td><td class="col-a">Metric views can't return rows</td></tr>
+        <tr><td>Open-ended exploration of new data</td><td class="ca"><strong>Views &amp; tables</strong></td><td class="col-a">You don't yet know what to model</td></tr>
+        <tr><td>A one-off, short-lived space</td><td class="ca"><strong>Views &amp; tables</strong></td><td class="col-a">Not worth a governed object</td></tr>
+        <tr><td>Mixed — KPIs plus drill-down</td><td class="cb"><strong>Both</strong></td><td class="col-a">The hybrid pattern, two slides from now</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>Default for our team:</b> if the number appears in more than one report, or anyone outside the team quotes it, it belongs in a metric view.</div>
+  </div>
+  <aside class="notes">Adjust the metric names in row one to whatever our actual top KPIs are — CASA ratio and NIM are placeholders, swap in the real ones from the management pack.</aside>
+</section>
+
+<!-- ═══════ 11 · GUIDANCE HIERARCHY ═══════ -->
+<section class="slide" data-title="The guidance hierarchy">
+  <div class="kicker">Principle</div>
+  <h2>Databricks' own order of preference</h2>
+  <div class="split">
+    <div class="stack" style="justify-content:center">
+      <div class="pyr">
+        <div class="p1"><strong>1 · SQL expressions</strong><br><span style="font-size:12.5px">Define metrics, filters and dimensions as SQL</span></div>
+        <div class="p2"><strong>2 · Example SQL queries</strong><br><span style="font-size:12.5px">Teach complex, multi-step or ambiguous questions</span></div>
+        <div class="p3"><strong>3 · Text instructions</strong><br><span style="font-size:12.5px">Plain English — <em>last resort only</em></span></div>
+      </div>
+      <div class="callout" style="margin-top:6px"><b>Structure beats prose.</b> The more of your meaning is expressed as SQL and metadata rather than sentences, the more reliably Genie reproduces it.</div>
+    </div>
+    <div class="stack">
+      <div class="card b">
+        <h3>A metric view <em>is</em> tier 1 — institutionalised</h3>
+        <p>Every measure is a SQL expression, permanently attached to the data, reusable by every consumer. You're not writing tier-1 guidance per space; you're writing it once.</p>
+      </div>
+      <div class="card a">
+        <h3>Method A pushes you down the pyramid</h3>
+        <p>Without a semantic layer, the gaps get filled with example queries and — eventually — paragraphs of text rules. That's the weakest, least reviewable tier.</p>
+      </div>
+      <div class="card">
+        <h3>Tier 2 never goes away</h3>
+        <p>Even with a metric view, keep example SQL for genuinely multi-step questions. The pyramid is a priority order, not an exclusion.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">This is the slide to use when someone pushes back with "can't we just write better instructions?" The answer is: yes, and that's tier 3, and it's the tier the vendor tells you to avoid.</aside>
+</section>
+
+<!-- ═══════ 12 · METADATA ═══════ -->
+<section class="slide" data-title="Metadata Genie reads">
+  <div class="kicker">How-to</div>
+  <h2>The metadata that actually moves accuracy</h2>
+  <div class="split">
+    <div>
+      <div class="codehead"><span>agent-facing metadata on a metric view</span><span>YAML</span></div>
+      <pre class="sm" data-lang="yaml">fields:
+  - name: order_date
+    expr: o_orderdate
+    display_name: Order Date
+    format:
+      type: date
+      date_format: year_month_day
+    synonyms:
+      - order time
+      - date of order
+      - ngay dat hang
+
+measures:
+  - name: total_revenue
+    expr: SUM(o_totalprice)
+    display_name: Total Revenue
+    format:
+      type: currency
+      currency_code: VND
+    synonyms: [revenue, total sales, doanh thu]</pre>
+      <div class="callout" style="margin-top:13px"><b>Now this works:</b> <em>"show me revenue by order time"</em> — no column name in sight.</div>
+    </div>
+    <div class="stack">
+      <div class="card"><h3><code>synonyms</code> — the highest-leverage field</h3>
+        <p>Up to <strong>10 per field or measure</strong>, 255 characters each. Imported into Genie automatically. Put every alias the business actually says here, in both languages.</p></div>
+      <div class="card"><h3><code>display_name</code></h3>
+        <p>Max 255 characters. Replaces the technical name everywhere a human sees it — chat answers, dashboards, Catalog Explorer.</p></div>
+      <div class="card"><h3><code>comment</code></h3>
+        <p>On the view and on individual entries. State the grain and the owner. This is Genie's context for <em>when</em> to use something.</p></div>
+      <div class="card"><h3><code>format</code></h3>
+        <p>Currency, percentage, date, number. Stops Genie returning ₫ figures as bare decimals.</p></div>
+    </div>
+  </div>
+  <aside class="notes">The bilingual synonym point is worth dwelling on — our users mix Vietnamese and English in the same sentence. Ten slots per field is plenty; treat unused slots as wasted accuracy.</aside>
+</section>
+
+<!-- ═══════ 13 · SETUP ═══════ -->
+<section class="slide" data-title="Setting up the space">
+  <div class="kicker">How-to</div>
+  <h2>Standing up a Genie space on a metric view</h2>
+  <div class="fill">
+    <div class="grid3" style="gap:14px">
+      <div class="card"><div class="step"><span class="num">1</span><div><h3>Build &amp; grant the view</h3>
+        <p>Create the metric view in the gold schema. <code>GRANT SELECT</code> to the consuming group — Genie runs as the user.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">2</span><div><h3>Create the space</h3>
+        <p>New Genie space → add the metric view as the data asset. Same flow as adding a table.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">3</span><div><h3>Verify what surfaced</h3>
+        <p>Confirm the fields and measures appear with their display names. If they don't, the YAML metadata is missing.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">4</span><div><h3>Add sample questions</h3>
+        <p>Seed the space with the five questions the audience will genuinely ask first.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">5</span><div><h3>Add example SQL — sparingly</h3>
+        <p>Only for multi-step questions the measures can't express on their own.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">6</span><div><h3>Benchmark it</h3>
+        <p>Turn validated questions into benchmark questions and score accuracy over time.</p></div></div></div>
+    </div>
+    <div class="grid2">
+      <div class="callout g"><b>Prove the migration:</b> run the same benchmark set against the old space and the metric-view space. That number is the business case, and it takes an afternoon.</div>
+      <div class="card b"><h3>Watch for the ceiling</h3>
+        <p>A space caps at <strong>30 tables</strong> and performs best at <strong>five or fewer</strong>. Collapsing a star schema into one metric view is often the cheapest way back under that line.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Step 3 catches most problems immediately — if display names and synonyms aren't showing, nothing downstream will work. Step 6 is the one teams skip; make it a requirement for sign-off.</aside>
+</section>
+
+<!-- ═══════ 14 · HYBRID ═══════ -->
+<section class="slide" data-title="The hybrid pattern">
+  <div class="kicker">Recommended</div>
+  <h2>The pattern we should standardise on</h2>
+  <div class="split">
+    <div class="stack">
+      <div class="card b"><div class="step"><span class="num">1</span><div>
+        <h3>A metric view as the KPI backbone</h3>
+        <p>Every governed number the business quotes. This is what most questions resolve against.</p></div></div></div>
+      <div class="card a"><div class="step"><span class="num a">2</span><div>
+        <h3>One curated view for drill-down</h3>
+        <p>A narrow, well-commented row-level view for "show me the actual records". Metric views can't be joined to it — it's a separate asset, and that's fine.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">3</span><div>
+        <h3>A handful of example SQL queries</h3>
+        <p>Reserved for genuinely multi-step questions. Not a dumping ground for metric definitions.</p></div></div></div>
+      <div class="card"><div class="step"><span class="num">4</span><div>
+        <h3>Text instructions only for etiquette</h3>
+        <p>Fiscal calendar conventions, default currency, "always show the period". Not business logic.</p></div></div></div>
+    </div>
+    <div class="stack">
+      <div class="card g">
+        <h3>Why this shape works</h3>
+        <p>The aggregate questions — which is most of them — hit a governed definition. The detail questions have somewhere legitimate to go. And the space stays far under the asset ceiling.</p>
+      </div>
+      <div>
+        <div class="codehead"><span>a typical TCB space</span><span>assets</span></div>
+        <pre class="sm" data-lang="yaml"># 2 assets, not 7
+tcb.gold.mv_sales          # metric view — KPIs
+tcb.gold.v_order_detail    # view — row-level drill-down
+
+# + 3 example SQL queries
+# + 4 text instructions (fiscal calendar, currency)</pre>
+      </div>
+      <div class="callout"><b>Sequence matters:</b> model the metric view first. Anything you still can't answer becomes an example query — not the other way round.</div>
+    </div>
+  </div>
+  <aside class="notes">This is the actionable takeaway. If people leave with one diagram in their heads, make it this one. Emphasise the sequence in the last callout — teams that start with example queries never get around to modelling.</aside>
+</section>
+
+<!-- ═══════ 15 · PITFALLS ═══════ -->
+<section class="slide" data-title="Pitfalls">
+  <div class="kicker">Field notes</div>
+  <h2>What goes wrong, and what it means</h2>
+  <div class="fill">
+    <div class="tblwrap"><table class="tight">
+      <thead><tr><th style="width:27%">What you see</th><th style="width:33%">Actual cause</th><th class="cb">Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Genie ignores the metric view and picks a table</td><td>Both are in the space and the raw table looks "closer" to the question</td><td class="cb">Remove the redundant table, or narrow it to a drill-down view</td></tr>
+        <tr><td>Answers change between rephrasings</td><td>The metric isn't defined anywhere — Genie re-infers each time</td><td class="cb">Move that metric into the metric view as a measure</td></tr>
+        <tr><td>Numbers inflate after adding a dimension</td><td>Join fan-out — the "dimension" isn't unique on the key</td><td class="cb">Verify cardinality before <code>at_most_one_match: true</code></td></tr>
+        <tr><td>Genie can't find a field users clearly named</td><td>Business vocabulary never reached the model</td><td class="cb">Add it to <code>synonyms</code> — up to 10 per field</td></tr>
+        <tr><td>"Show me order 12345" returns nothing useful</td><td>The space only has a metric view; it can't return rows</td><td class="cb">Add the curated drill-down view</td></tr>
+        <tr><td>Slow or scattered asset selection</td><td>Too many assets in the space</td><td class="cb">Collapse the star schema into one metric view; aim for ≤5</td></tr>
+        <tr><td>Text instructions contradict each other</td><td>Logic accumulated in tier 3 instead of tier 1</td><td class="cb">Promote the rules into measures, filters and fields</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout"><b>Row three is the dangerous one.</b> It doesn't throw an error — it returns a bigger, confidently-presented number. Always reconcile after adding a join.</div>
+  </div>
+  <aside class="notes">Row one surprises people constantly: leaving the source tables in the space alongside the metric view actively undermines it. Cleaning up the asset list is often the single highest-impact fix.</aside>
+</section>
+
+<!-- ═══════ 16 · RECAP (dark band) ═══════ -->
+<section class="slide dark" data-title="Recap">
+  <div class="kicker">Recap</div>
+  <h2>Four things to take away</h2>
+  <div class="fill">
+    <div class="grid4" style="align-items:start">
+      <div class="card"><div class="num" style="margin-bottom:11px">1</div>
+        <h3 style="font-size:17px;margin-bottom:7px">Genie only knows what you give it</h3>
+        <p>It writes SQL from context. Missing semantics get invented, plausibly.</p></div>
+      <div class="card"><div class="num a" style="margin-bottom:11px">2</div>
+        <h3 style="font-size:17px;margin-bottom:7px">A puts meaning in the space</h3>
+        <p>Fast to start, fragile at scale, re-done for every new space, fails quietly.</p></div>
+      <div class="card"><div class="num" style="margin-bottom:11px">3</div>
+        <h3 style="font-size:17px;margin-bottom:7px">B puts meaning in the catalog</h3>
+        <p>Modelled once, governed, reusable, correct at any grain — fails loudly.</p></div>
+      <div class="card"><div class="num" style="margin-bottom:11px">4</div>
+        <h3 style="font-size:17px;margin-bottom:7px">Run both, deliberately</h3>
+        <p>Metric view for KPIs, one curated view for detail, example SQL only for the rest.</p></div>
+    </div>
+    <div class="grid2" style="margin-top:auto">
+      <div class="card">
+        <h3>Your next step</h3>
+        <p>Take one metric your space already answers, express it as a measure in a metric view, and benchmark the two side by side. Bring the numbers to the next session.</p>
+      </div>
+      <div class="callout" style="background:rgba(228,0,43,.14);border-left-color:#F5A0AF;color:#EDE3D5">
+        <b style="color:#F5A0AF">Questions?</b> Then let's open a workspace and build one against a real TCB gold table together.
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Close by opening the workspace. A session that ends in a live build converts far better than one that ends in Q&A. Assign the pilot space and an owner before people leave.</aside>
+</section>
+
+  <div class="foot">
+    <span id="foot-title"></span>
+    <span><span id="cur">01</span> / <span id="tot">16</span></span>
+  </div>
+  <div id="bar"></div>
+
+</div>
+</div>
+
+<div id="notes"><b>Speaker notes</b><span id="notes-body"></span></div>
+
+<script>
+(function(){
+  const esc = s => s.replace(/&(?!amp;|lt;|gt;)/g,'&amp;');
+
+  function hlYaml(src){
+    return src.replace(
+      /(#[^\n]*)|('[^'\n]*'|"[^"\n]*")|(^[ \t]*(?:-[ \t]+)?'?[\w.]+'?[ \t]*:)|\b(true|false|null)\b|(\b\d+(?:\.\d+)?\b)/gm,
+      (m,c,s,k,b,n)=>{
+        if(c!==undefined) return '<span class="c">'+c+'</span>';
+        if(s!==undefined) return '<span class="s">'+s+'</span>';
+        if(k!==undefined) return '<span class="k">'+k+'</span>';
+        if(b!==undefined) return '<span class="b">'+b+'</span>';
+        if(n!==undefined) return '<span class="n">'+n+'</span>';
+        return m;
+      });
+  }
+
+  function hlSql(src){
+    return src.replace(
+      /(--[^\n]*)|('[^'\n]*')|\b(CREATE|OR|REPLACE|VIEW|WITH|METRICS|LANGUAGE|YAML|AS|SELECT|FROM|WHERE|GROUP|BY|ALL|ORDER|DESC|ASC|AND|GRANT|ON|TO|JOIN|LEFT|OUTER|CASE|WHEN|THEN|END)\b|\b(MEASURE|SUM|COUNT|AVG|DISTINCT|FILTER|DATE_TRUNC)\b|(\b\d+(?:\.\d+)?\b)/g,
+      (m,c,s,kw,fn,n)=>{
+        if(c!==undefined) return '<span class="c">'+c+'</span>';
+        if(s!==undefined) return '<span class="s">'+s+'</span>';
+        if(kw!==undefined) return '<span class="kw">'+kw+'</span>';
+        if(fn!==undefined) return '<span class="f">'+fn+'</span>';
+        if(n!==undefined) return '<span class="n">'+n+'</span>';
+        return m;
+      });
+  }
+
+  document.querySelectorAll('pre[data-lang]').forEach(pre=>{
+    const lang = pre.dataset.lang, raw = esc(pre.innerHTML);
+    if(lang==='yaml'){ pre.innerHTML = hlYaml(raw); return; }
+    const i = raw.indexOf('version:');
+    if(i > -1){
+      const head = raw.slice(0,i), body = raw.slice(i), j = body.lastIndexOf('$$;');
+      pre.innerHTML = hlSql(head) + (j>-1 ? hlYaml(body.slice(0,j)) + hlSql(body.slice(j)) : hlYaml(body));
+    } else {
+      pre.innerHTML = hlSql(raw);
+    }
+  });
+
+  const slides = [...document.querySelectorAll('.slide')];
+  const total  = slides.length;
+  let i = 0;
+
+  const stage = document.getElementById('stage');
+  const bar   = document.getElementById('bar');
+  const cur   = document.getElementById('cur');
+  const foot  = document.getElementById('foot-title');
+  const notes = document.getElementById('notes');
+  const nbody = document.getElementById('notes-body');
+  document.getElementById('tot').textContent = String(total).padStart(2,'0');
+
+  function show(n){
+    i = Math.max(0, Math.min(total-1, n));
+    slides.forEach((s,k)=>s.classList.toggle('active', k===i));
+    cur.textContent = String(i+1).padStart(2,'0');
+    foot.textContent = 'Techcombank · Data & Analytics — ' + (slides[i].dataset.title || '');
+    bar.style.width = ((i+1)/total*100)+'%';
+    const note = slides[i].querySelector('.notes');
+    nbody.textContent = note ? note.textContent.trim() : '—';
+    document.querySelector('.foot').style.color = slides[i].classList.contains('dark') ? '#8A7C6C' : '';
+    if(location.hash !== '#'+(i+1)) history.replaceState(null,'','#'+(i+1));
+  }
+
+  function fit(){
+    stage.style.transform = 'scale('+ Math.min(window.innerWidth/1280, window.innerHeight/720)*0.94 +')';
+  }
+  window.addEventListener('resize', fit);
+
+  document.addEventListener('keydown', e=>{
+    switch(e.key){
+      case 'ArrowRight': case 'PageDown': case ' ': case 'Enter':
+        e.preventDefault(); show(i+1); break;
+      case 'ArrowLeft': case 'PageUp': case 'Backspace':
+        e.preventDefault(); show(i-1); break;
+      case 'Home': show(0); break;
+      case 'End':  show(total-1); break;
+      case 's': case 'S': notes.classList.toggle('on'); break;
+      case 'f': case 'F':
+        if(document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+        break;
+    }
+  });
+
+  stage.addEventListener('click', e=>{
+    if(e.target.closest('pre')) return;
+    show(e.clientX < window.innerWidth/2 ? i-1 : i+1);
+  });
+
+  let x0 = null;
+  stage.addEventListener('touchstart', e=>{ x0 = e.changedTouches[0].clientX; }, {passive:true});
+  stage.addEventListener('touchend', e=>{
+    if(x0===null) return;
+    const dx = e.changedTouches[0].clientX - x0;
+    if(Math.abs(dx) > 50) show(dx < 0 ? i+1 : i-1);
+    x0 = null;
+  }, {passive:true});
+
+  fit();
+  show(parseInt(location.hash.slice(1),10) - 1 || 0);
+})();
+</script>
+</body>
+</html>
