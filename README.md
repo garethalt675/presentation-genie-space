@@ -35,6 +35,25 @@ Open the file directly in a browser — no build step, no server, no dependencie
 Clicking the left/right half of the slide also navigates, and touch swipe works.
 Deep links work via the hash: `…/deck.html#7` opens slide 7.
 
+## Published artifact
+
+The deck is also published as a private Claude Artifact:
+
+**https://claude.ai/code/artifact/f1fe984e-4c25-4f1b-bcfa-93df10a23135**
+
+Artifacts wrap the supplied file in their own `<!doctype html><head>…</head><body>`
+skeleton, so the published copy must contain page content only. `build-artifact.py`
+strips the wrapper from the source deck and writes `artifact.html` (gitignored —
+it is generated, not source):
+
+```
+python build-artifact.py
+```
+
+To update the live page, regenerate and republish. From a session that did not
+originally publish it, pass the URL above explicitly, otherwise a second artifact
+is minted at a new URL instead of updating this one.
+
 ## Editing
 
 The deck is a **single self-contained HTML file** — CSS, JS and content in one
