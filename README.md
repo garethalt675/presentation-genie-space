@@ -1,19 +1,26 @@
-# Databricks Metric Views — Presentations
+# Metric Views in Genie Spaces — Presentation
 
-Self-contained HTML slide decks for internal enablement sessions on Databricks
-Unity Catalog **metric views**, with a Techcombank-themed deck focused on using
-them inside **AI/BI Genie spaces**.
+A self-contained HTML slide deck for an internal Techcombank enablement session
+on using Databricks Unity Catalog **metric views** inside **AI/BI Genie spaces**.
 
-## Decks
+## The deck
 
-| File | Slides | Focus |
-|---|---|---|
-| [`metric-views-in-genie-tcb.html`](metric-views-in-genie-tcb.html) | 16 | **Primary deck.** Metric views vs. tables/views as the semantic layer for a Genie space — compare & contrast. Techcombank theme. |
-| [`databricks-metric-views.html`](databricks-metric-views.html) | 19 | General-purpose deck: what metric views are, how to construct them, best practice. Dark theme, vendor-neutral. |
+**[`metric-views-in-genie-tcb.html`](metric-views-in-genie-tcb.html)** — 16 slides.
+
+Compares two ways of giving Genie the business meaning behind our data:
+
+- **Method A** — tables and views, curated in the space (comments, synonyms,
+  example SQL, text instructions). Colour-coded **gold** throughout.
+- **Method B** — a metric view as the semantic layer in Unity Catalog.
+  Colour-coded **red** throughout.
+
+The spine of the deck is the side-by-side comparison (slide 7), a worked example
+showing the SQL Genie writes each way (slide 8), an honest account of how each
+method fails (slide 9), and the hybrid pattern to standardise on (slide 14).
 
 ## Viewing
 
-Open either file directly in a browser — no build step, no server, no dependencies.
+Open the file directly in a browser — no build step, no server, no dependencies.
 
 **Controls**
 
@@ -30,9 +37,9 @@ Deep links work via the hash: `…/deck.html#7` opens slide 7.
 
 ## Editing
 
-Each deck is a **single self-contained HTML file** — CSS, JS and content in one
+The deck is a **single self-contained HTML file** — CSS, JS and content in one
 place, no external requests (no CDN, no web fonts, no images). Keep it that way;
-these get opened offline and from local disk.
+it gets opened offline and from local disk.
 
 ### Structure
 
@@ -54,12 +61,12 @@ these get opened offline and from local disk.
   `>` as `&lt;` / `&gt;` inside them.
 - Layout helpers: `.fill`, `.split`, `.grid2/3/4`, `.stack`, `.card`, `.callout`,
   `.chip`, `.tblwrap`. Prefer these over new bespoke CSS.
-- In the TCB deck, colour carries meaning: **gold = Method A (tables & views)**,
-  **red = Method B (metric views)**. Don't use them decoratively.
+- Colour carries meaning: **gold = Method A (tables & views)**, **red = Method B
+  (metric views)**. Don't use them decoratively.
 
 ### Checking a slide still fits
 
-The decks were validated with a Playwright script that measures per-slide
+The deck was validated with a Playwright script that measures per-slide
 overflow against the stage bounds. On this machine Chromium downloads fail, so
 launch with the system Chrome channel:
 
@@ -72,7 +79,7 @@ band). Anything over ~5px is a real overflow.
 
 ## Theme
 
-The Genie deck uses the Techcombank "champagne & gold" identity:
+Techcombank "champagne & gold" identity:
 
 | Token | Value | Use |
 |---|---|---|
@@ -93,7 +100,7 @@ material gets wrong and that should not be regressed:
 - The metric view YAML spec is **`version: 1.1`**.
 - The dimension block is called **`fields`**, not `dimensions`.
 
-Other facts asserted in the Genie deck, with sources:
+Other facts asserted in the deck, with sources:
 
 - A Genie space supports up to **30 tables**; the guidance is **five or fewer** —
   [Curate an effective Genie Agent](https://docs.databricks.com/aws/en/genie/best-practices)
@@ -107,7 +114,7 @@ Other facts asserted in the Genie deck, with sources:
 
 ## Placeholders to replace before presenting
 
-- Slide 2 of the Genie deck uses illustrative figures (`₫4.2bn / 4.7bn / 3.9bn`).
+- Slide 2 uses illustrative figures (`₫4.2bn / 4.7bn / 3.9bn`).
 - Slide 10 uses NIM and CASA ratio as stand-in KPI names.
-- Both decks reference an "Analytics Team" owner and sample TPC-H / `tcb.gold.*`
-  table names.
+- Table names throughout (`tcb.gold.mv_sales`, `tcb.gold.fct_orders`) are
+  illustrative, modelled on the TPC-H sample schema.
